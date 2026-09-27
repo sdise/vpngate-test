@@ -4,6 +4,20 @@
 
 把节点（`主机名/IP:端口`，或整段 `vpngate.csv` 内容）粘进去 —— 点「开始测试」—— 它会在 Cloudflare 边缘节点上**直接对目标做 SSTP 握手**，把还活着的节点挑出来，再一键转成可以直接导入 v2rayN / Shadowrocket 等客户端的 `vless://` 链接。
 
+## 在线预览
+
+**<https://vpngate-test.edgeoneai.cc.cd/>**
+
+已经部署好的现成实例，打开即用，不用自己搭：
+
+| 页面 | 地址 |
+|---|---|
+| 检测界面 | <https://vpngate-test.edgeoneai.cc.cd/> |
+| 健康检查 | <https://vpngate-test.edgeoneai.cc.cd/healthz> |
+| 当前配置 | <https://vpngate-test.edgeoneai.cc.cd/api/config> |
+
+> 该实例为个人演示用，随时可能调整或下线；长期使用请按下面的方式自己部署一份。
+
 ## 一键部署到 Cloudflare（推荐）
 
 [![Deploy to Cloudflare](https://deploy.workers.cloudflare.com/button)](https://deploy.workers.cloudflare.com/?url=https://github.com/sdise/vpngate-test)
@@ -27,6 +41,7 @@ https://dash.cloudflare.com/?to=/:account/workers-and-pages/create/deploy-to-wor
 
 ## 目录
 
+- [在线预览](#在线预览)
 - [一键部署到 Cloudflare（推荐）](#一键部署到-cloudflare推荐)
 - [一、它能做什么](#一它能做什么)
 - [二、和 `scripts/sstp_check.py` 的关系](#二和-scriptssstp_checkpy-的关系)

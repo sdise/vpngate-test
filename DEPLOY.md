@@ -1,5 +1,7 @@
 # 部署文档 · vpngate-test
 
+> 在线预览（无需部署，直接体验）：<https://vpngate-test.edgeoneai.cc.cd/>
+
 四种方式，任选其一，部署出来的东西完全一样：
 
 | 方式 | 适合谁 | 需要装 Node？ | 需要命令行？ | 推送后自动部署？ |
