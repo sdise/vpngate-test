@@ -1,7 +1,11 @@
 #:schema node_modules/wrangler/config-schema.json
 name = "vpngate-test"
 main = "worker.js"
-compatibility_date = "2026-09-28"
+# 注意：compatibility_date 不能晚于「当前 UTC 日期」，否则部署会报
+#   Can't set compatibility date in the future: xxxx-xx-xx  [code: 10021]
+# 本地时区（如 UTC+8）会比 UTC 早一天，写「今天的本地日期」很容易踩坑，
+# 所以这里固定一个已经过去的日期；不需要跟着项目更新。
+compatibility_date = "2026-09-25"
 
 # 说明：
 #   1) 本项目是【单文件】Worker，全部逻辑都在 worker.js，

@@ -88,6 +88,8 @@ git push
 ```
 
 > ⚠️ 注意：**往 `sdise/vpngate-test` 推送不会触发你的部署**，只有往你克隆出来的那个仓库推才会。
+>
+> 一键按钮是**一次性克隆**：之后再往上游仓库推，**不会**自动同步到你那份。想拿到上游修复见[常见问题](#常见问题)里的「上游仓库更新了怎么同步」。
 
 ---
 
@@ -227,7 +229,7 @@ npx wrangler login
 ```toml
 name = "vpngate-test"        # Worker 名，决定 *.workers.dev 子域名
 main = "worker.js"
-compatibility_date = "2026-09-28"
+compatibility_date = "2026-09-25"   # 不能晚于当前 UTC 日期，别写成本地时区的今天
 
 [vars]
 # UUID = "495c7195-85b8-498a-bf20-2ea9ce9175b5"
@@ -311,6 +313,26 @@ custom_domain = true
 - 到 Dashboard → 该 Worker → **设置 → 构建** 确认 Git 仓库已连上；
 - 到 **部署（Deployments）** 看构建日志，失败会写明原因；
 - 手动补一次：Deployments 页面 → **Retry build**。
+
+**Q：构建日志报 `Can't set compatibility date in the future: xxxx-xx-xx` [code: 10021]？**
+`wrangler.toml` 里的 `compatibility_date` **不能晚于当前 UTC 日期**。
+本地时区（如 UTC+8）通常比 UTC 早一天，如果你把日期写成了「今天的本地日期」，在 UTC 还没到那天时就会报这个错。
+
+修复：把 `wrangler.toml` 里的日期改成一个**已经过去**的日期（本项目已固定为 `2026-09-25`），推送后自动重新构建即可。
+
+> 用一键按钮部署的话，注意改动要改在**你自己账号下克隆出来的那个仓库**里，改完 push 会自动重新部署。
+
+**Q：一键部署（方式〇 A）之后，上游仓库更新了怎么同步？**
+一键按钮是**一次性**把仓库克隆到你的账号下，之后两边就独立了。想拿到上游的新改动，二选一：
+
+```bash
+# 1) 把上游加为远端，随时合并
+git remote add upstream https://github.com/sdise/vpngate-test.git
+git fetch upstream && git merge upstream/main && git push
+```
+
+2. 或者干脆**重新点一次一键部署按钮**（会在你账号下再建一个仓库，如 `vpngate-test-2`），
+   拿到新代码后再把旧的 Worker 删掉即可。
 
 **Q：Cloudflare 的构建失败提示找不到 wrangler？**
 把部署命令确保为 `npx wrangler deploy`（不要写成裸 `wrangler deploy`）。本仓库 `package.json` 的 `deploy` 脚本已经是 `npx wrangler deploy`。
