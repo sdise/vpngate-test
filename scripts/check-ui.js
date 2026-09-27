@@ -18,6 +18,14 @@ console.log('含模板插值 ${ :', html.includes('${'));
 console.log('含反引号 :', html.includes('`'));
 console.log('含占位符 __CFG_JSON__ :', html.includes('__CFG_JSON__'));
 
-const script = html.split('<script>')[1].split('</script>')[0];
-new Function(script);
-console.log('前端 JS 语法检查: OK');
+const blocks = html.split('<script>').slice(1).map(part => part.split('</script>')[0]);
+blocks.forEach((script, index) => {
+  new Function(script);
+  console.log('前端 <script> #' + (index + 1) + ' 语法检查: OK（' + script.length + ' 字符）');
+});
+
+if (!blocks.length) {
+  console.error('未找到 <script> 块');
+  process.exit(1);
+}
+console.log('前端 JS 语法检查: OK（共 ' + blocks.length + ' 块）');

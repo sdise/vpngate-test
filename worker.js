@@ -1120,20 +1120,35 @@ const UI_HTML = `<!doctype html>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>VPNGate 节点检测 · vpngate-test</title>
+<meta name="theme-color" content="#faf6f0">
 <style>
+/* ---------- 配色变量：默认「暖色」 ---------- */
 :root{
+  --bg:#faf6f0; --card:#fffdfa; --card2:#f5eee4; --line:#e6dccd;
+  --txt:#3d3428; --sub:#7d6f5b; --acc:#b8642f; --go:#1f8a4c;
+  --ok:#1f8a4c; --bad:#c0392b; --warn:#b8860b;
+  --note-bg:#fdf4e4; --note-txt:#6d5b3d; --note-b:#a4762a; --note-strong:#8a5a10;
+  --badge-ok:#cbe6d5; --badge-bad:#f2cdc7; --shadow:0 1px 2px rgba(120,95,60,.06);
+}
+[data-theme=dark]{
   --bg:#0e1117; --card:#161a23; --card2:#1b2029; --line:#272d3a;
-  --txt:#e7eaf0; --sub:#98a2b3; --acc:#4f8cff; --ok:#22c55e;
-  --bad:#ef4444; --warn:#f59e0b;
+  --txt:#e7eaf0; --sub:#98a2b3; --acc:#4f8cff; --go:#16a34a;
+  --ok:#22c55e; --bad:#ef4444; --warn:#f59e0b;
+  --note-bg:#1c1810; --note-txt:#ddd6c4; --note-b:#f7dfa5; --note-strong:#f7dfa5;
+  --badge-ok:#21402c; --badge-bad:#452323; --shadow:none;
 }
 *{box-sizing:border-box}
 body{margin:0;background:var(--bg);color:var(--txt);
-  font:14px/1.65 -apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif}
+  font:14px/1.65 -apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif;
+  transition:background .18s,color .18s}
 .wrap{max-width:1160px;margin:0 auto;padding:22px 16px 70px}
+.head{display:flex;align-items:flex-start;gap:14px;justify-content:space-between;flex-wrap:wrap}
 h1{font-size:21px;margin:0 0 4px}
 .sub{color:var(--sub);font-size:12.5px;margin:0}
-.card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:16px;margin-top:14px}
-.card h2{font-size:14px;margin:0 0 12px;display:flex;align-items:center;gap:8px}
+#btnTheme{flex:none;font-size:12.5px;padding:7px 13px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:16px;
+  margin-top:14px;box-shadow:var(--shadow)}
+.card h2{font-size:14px;margin:0 0 12px;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
 .card h2 span.tag{font-weight:400;font-size:11.5px;color:var(--sub);background:var(--card2);
   border:1px solid var(--line);border-radius:6px;padding:1px 7px}
 textarea{width:100%;background:var(--card2);color:var(--txt);border:1px solid var(--line);
@@ -1150,9 +1165,11 @@ input[type=text],input[type=number],select{width:100%;background:var(--card2);co
 input:focus,select:focus{border-color:var(--acc)}
 button{background:var(--card2);color:var(--txt);border:1px solid var(--line);border-radius:8px;
   padding:8px 15px;font-size:13px;cursor:pointer;transition:.15s}
-button:hover{border-color:var(--acc);color:#fff}
+button:hover{border-color:var(--acc);color:var(--acc)}
 button.primary{background:var(--acc);border-color:var(--acc);color:#fff;font-weight:600}
-button.primary:hover{filter:brightness(1.08)}
+button.primary:hover{filter:brightness(1.06);color:#fff}
+button.go{background:var(--go);border-color:var(--go);color:#fff;font-weight:600}
+button.go:hover{filter:brightness(1.06);color:#fff}
 button.ghost{background:transparent}
 button:disabled{opacity:.45;cursor:not-allowed}
 .chk{display:flex;align-items:center;gap:6px;font-size:12.5px;color:var(--sub);cursor:pointer}
@@ -1167,16 +1184,16 @@ button:disabled{opacity:.45;cursor:not-allowed}
 .dot{width:7px;height:7px;border-radius:50%;flex:none}
 .dot.ok{background:var(--ok)} .dot.bad{background:var(--bad)} .dot.wait{background:var(--warn)}
 .badge{font-size:11px;padding:1px 7px;border-radius:6px;border:1px solid var(--line);color:var(--sub)}
-.badge.ok{color:var(--ok);border-color:#21402c}
-.badge.bad{color:var(--bad);border-color:#452323}
+.badge.ok{color:var(--ok);border-color:var(--badge-ok)}
+.badge.bad{color:var(--bad);border-color:var(--badge-bad)}
 .tabs{display:flex;gap:6px;margin-bottom:9px;flex-wrap:wrap}
 .tab{font-size:12.5px;padding:5px 12px;border-radius:7px;border:1px solid var(--line);
   background:transparent;color:var(--sub);cursor:pointer}
 .tab.on{background:var(--acc);border-color:var(--acc);color:#fff}
 .tip{color:var(--sub);font-size:12px;margin:8px 0 0}
-.note{margin-top:11px;padding:10px 12px;border-left:3px solid var(--warn);background:#1c1810;
-  border-radius:0 8px 8px 0;font-size:12.5px;color:#ddd6c4;line-height:1.75}
-.note b{color:#f7dfa5}
+.note{margin-top:11px;padding:10px 12px;border-left:3px solid var(--warn);background:var(--note-bg);
+  border-radius:0 8px 8px 0;font-size:12.5px;color:var(--note-txt);line-height:1.75}
+.note b{color:var(--note-strong)}
 code{font-family:ui-monospace,Consolas,monospace;font-size:11.5px;background:var(--card2);
   border:1px solid var(--line);border-radius:5px;padding:1px 5px;color:var(--txt);word-break:break-all}
 pre.code{background:var(--card2);border:1px solid var(--line);border-radius:8px;padding:10px;
@@ -1190,11 +1207,25 @@ summary{cursor:pointer;color:var(--sub);font-size:12.5px}
 footer{color:var(--sub);font-size:12px;text-align:center;margin-top:26px}
 a{color:var(--acc)}
 </style>
+<script>
+/* 首屏前应用配色，避免闪白：默认暖色，只有存过 dark 才切暗色 */
+(function(){
+  try{
+    var t = localStorage.getItem('vpngate-test-theme');
+    if (t === 'dark') document.documentElement.setAttribute('data-theme', 'dark');
+  }catch(e){}
+})();
+</script>
 </head>
 <body>
 <div class="wrap">
-  <h1>VPNGate 节点检测 · vpngate-test</h1>
-  <p class="sub">粘贴节点或 vpngate.csv 内容 → 提取 → 实测 SSTP 握手 → 输出有效节点并转换为 vless 链接</p>
+  <div class="head">
+    <div>
+      <h1>VPNGate 节点检测 · vpngate-test</h1>
+      <p class="sub">粘贴节点或 vpngate.csv 内容 → 提取 → 实测 SSTP 握手 → 输出有效节点并转换为 vless 链接</p>
+    </div>
+    <button id="btnTheme" title="切换暖色 / 暗色配色">切换到暗色</button>
+  </div>
 
   <div class="card">
     <h2>1 · 输入节点 <span class="tag">支持单行 / 多行 / 混合</span></h2>
@@ -1227,7 +1258,7 @@ a{color:var(--acc)}
     <div class="row">
       <button class="primary" id="btnTest">开始测试</button>
       <button id="btnStop" disabled>停止</button>
-      <button class="primary" id="btnConvert" style="background:#16a34a;border-color:#16a34a">转换为 vless 链接</button>
+      <button class="go" id="btnConvert">转换为 vless 链接</button>
       <button class="ghost" id="btnCopy">复制结果</button>
       <button class="ghost" id="btnDownload">下载 .txt</button>
     </div>
@@ -1318,6 +1349,28 @@ window.CFG = __CFG_JSON__;
 (function(){
   var $ = function(id){ return document.getElementById(id); };
   var S = { items: [], valid: [], failed: [], vless: '', tab: 'valid', ctrl: null, running: false };
+
+  /* ---------- 配色：暖色（默认）/ 暗色 ---------- */
+  var THEME_KEY = 'vpngate-test-theme';
+  var THEME_BG = { warm: '#faf6f0', dark: '#0e1117' };
+
+  function currentTheme(){
+    return document.documentElement.getAttribute('data-theme') === 'dark' ? 'dark' : 'warm';
+  }
+  function applyTheme(theme){
+    if (theme === 'dark') document.documentElement.setAttribute('data-theme', 'dark');
+    else document.documentElement.removeAttribute('data-theme');
+    $('btnTheme').textContent = theme === 'dark' ? '切换到暖色' : '切换到暗色';
+    $('btnTheme').title = theme === 'dark' ? '当前：暗色（点击切回暖色）' : '当前：暖色（点击切到暗色）';
+    var meta = document.querySelector('meta[name=theme-color]');
+    if (meta) meta.setAttribute('content', THEME_BG[theme]);
+  }
+  function toggleTheme(){
+    var next = currentTheme() === 'dark' ? 'warm' : 'dark';
+    try { localStorage.setItem(THEME_KEY, next); } catch (e) {}
+    applyTheme(next);
+  }
+  $('btnTheme').onclick = toggleTheme;
 
   function fill(){
     CFG.entryPort = CFG.entryPort || 443;
@@ -1558,6 +1611,7 @@ window.CFG = __CFG_JSON__;
     tabs[i].onclick = function(){ switchTab(this.getAttribute('data-tab')); };
   }
 
+  applyTheme(currentTheme());   // 同步按钮文案与 theme-color
   fill();
 })();
 </script>
