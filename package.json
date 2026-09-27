@@ -1,0 +1,17 @@
+{
+  "name": "vpngate-test",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Cloudflare Worker：VPNGate 节点 SSTP 在线检测 + VLESS 链接转换（带 Web 界面）",
+  "main": "worker.js",
+  "type": "module",
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy",
+    "tail": "wrangler tail",
+    "check": "node scripts/check-ui.js && node scripts/check-parse.js && node scripts/check-routes.js"
+  },
+  "devDependencies": {
+    "wrangler": "^4.0.0"
+  }
+}

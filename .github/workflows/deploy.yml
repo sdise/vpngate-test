@@ -1,0 +1,37 @@
+name: Deploy
+
+# 推送到 main 分支自动部署到 Cloudflare Workers。
+# 前置条件：在仓库 Settings → Secrets and variables → Actions 里添加
+#   CLOUDFLARE_API_TOKEN —— Cloudflare「编辑 Cloudflare Workers」模板的 API Token。
+# 也可以不配：在 Actions 页面手动 Run workflow（同样需要该 Secret）。
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Self check
+        run: npm run check
+
+      - name: Deploy to Cloudflare Workers
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          command: deploy
