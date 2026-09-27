@@ -51,8 +51,11 @@ compatibility_date = "2026-09-28"
 # 整轮检测最大时长秒数（10~600）
 # MAX_DURATION = "240"
 
-# 是否强制走落地：path 末尾追加 global=1（1=开，其他=关）
-# GLOBAL = "0"
+# 落地模式三态：path 末尾追加 global=1 / global=0
+#   1    = global=1，强制走 SSTP 落地
+#   0    = global=0，不强制（服务端先尝试直连）
+#   留空  = 不写这个参数（默认，等价于 0）
+# GLOBAL = "1"
 
 # ---------- 可选：自定义域名（部署后拿到 *.workers.dev 再回来填） ----------
 # [[routes]]

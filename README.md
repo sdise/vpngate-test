@@ -61,7 +61,7 @@ SSTP 头 4 字节：0x10 | (控制 0x01 / 数据 0x00) | 长度(高 4 位保留�
 
 ## 三、界面怎么用
 
-打开部署好的地址（如 `https://vpngate-test.xxx.workers.dev`），页面分四块：
+打开部署好的地址（如 `https://vpngate-test.xxx.workers.dev`），页面分五块：
 
 ### 1 · 输入节点
 
@@ -81,18 +81,65 @@ SSTP 头 4 字节：0x10 | (控制 0x01 / 数据 0x00) | 长度(高 4 位保留�
 | 最多检测 | 200 | 超过的部分直接不测（保护 Worker） |
 | 额外验证出网 | 关 | 勾选后，握手成功还会经隧道对目标（默认 `1.1.1.1:80`）做一次 TCP 三次握手，确认节点真能转发流量。**耗时明显变长，仅在需要时开** |
 
-展开 **「vless 链接参数」** 可改：UUID、入口 `host:port`、SNI/Host、传输类型（ws / xhttp）、`ed`、备注模板，以及「强制走落地（global=1）」。
-
-### 3 · 开始检测
+### 3 · 检测与转换
 
 - **「开始测试」**：开跑。进度条与统计（总数 / 已测 / 有效 / 无效 / 耗时）实时更新，下方列表逐条刷出结果：
   - 绿点 = 有效，徽章显示耗时（`ip=10.8.0.5  320ms`）
   - 红点 = 失败，徽章显示失败原因（`timeout`、`sstp: pap rejected` …）
 - **「停止」**：随时中断（前端 AbortController 断开 SSE）。
-- **「转换为 vless 链接」**：把**有效节点**转成链接（如果还没测过，就转换**已提取的全部节点**）。
+- **「转换为 vless 链接」**：按下面「4 · 转换参数」的设置，把**有效节点**转成链接（如果还没测过，就转换**已提取的全部节点**）。
 - **「复制结果」/「下载 .txt」**：对应当前选中的标签页内容。
 
-### 4 · 结果
+### 4 · 转换参数
+
+点「转换为 vless 链接」时按这里的设置生成，**六个常用项都可以自定义**：
+
+| 参数 | 默认 | 说明 |
+|---|---|---|
+| **UUID** | `495c7195-85b8-498a-bf20-2ea9ce9175b5` | VLESS 的 UUID，必须与 **服务端**（VLESS 节点服务端）配置的一致 |
+| **ENTRY_HOST** | `saas.sin.fan` | VLESS 入口地址，**域名或 IP 均可**；必须是运行 cf-vpngate 类服务端的接入点 |
+| **ENTRY_PORT** | `443` | VLESS 入口端口 |
+| **Host / SNI** | `snip.edgeoneai.cc.cd` | TLS 的 SNI，同时作为 WebSocket / XHTTP 请求里的 `Host` |
+| **TYPE** | `ws` | 传输类型：`ws` 或 `xhttp` |
+| **GLOBAL** | 不追加 | `不追加` / `global=1`（强制走 SSTP 落地）/ `global=0`（不强制，服务端先尝试直连） |
+
+展开「更多参数」还可改：`ed`（Early Data 长度）、备注模板、SSTP 账号/密码。
+
+> ⚠️ **转换范围限制**
+>
+> 这里的转换**只支持一种节点**：`VLESS over WebSocket / XHTTP + TLS`，即
+>
+> ```text
+> vless://{UUID}@{ENTRY_HOST}:{ENTRY_PORT}?security=tls&encryption=none&type=ws|xhttp
+>   &host={SNI}&sni={SNI}&path=/fdip=sstp://vpn:vpn@{节点}:{端口}?ed={ED}
+> ```
+>
+> 也就是说，`security` 恒为 `tls`、`encryption` 恒为 `none`、**不支持 Reality / 非 TLS**，
+> 也不做 trojan / vmess / ss 等协议和 TCP / gRPC / HTTPUpgrade 等传输的转换 —— 那是别的工具该干的事。
+
+> ℹ️ **选了 xhttp 要注意**
+>
+> xhttp 的握手参数由客户端的 **extra** 决定，**必须与服务端的 xhttp 配置一致**，否则会握手失败或直接超时。
+> 界面上选 `xhttp` 时会自动展开一份常用 extra（服务端未改动时可直接照抄）：
+>
+> ```json
+> {
+>   "extra": {
+>     "noGRPCHeader": true,
+>     "headers": { "Content-Type": "application/octet-stream" },
+>     "xPaddingBytes": "100-1000",
+>     "xPaddingObfsMode": true,
+>     "xPaddingMethod": "tokenish",
+>     "xPaddingPlacement": "queryInHeader",
+>     "xPaddingHeader": "X-Cache",
+>     "xPaddingKey": "_dc"
+>   }
+> }
+> ```
+>
+> 服务端若改过相关参数，请以**服务端的实际配置为准**。
+
+### 5 · 结果
 
 三个标签页切换下方文本框的内容：
 
@@ -205,9 +252,15 @@ vless://495c7195-85b8-498a-bf20-2ea9ce9175b5@saas.sin.fan:443
 
 备注模板默认为 `vpngate.me | {country} | {name}`，可用变量：`{country}`、`{name}`（主机名第一段）、`{host}`、`{port}`。
 
-选 `xhttp` 传输时，会额外加上 `mode=stream-one` 与 `alpn=h2`。
+选 `xhttp` 传输时，会额外加上 `mode=stream-one` 与 `alpn=h2`（记得客户端 xhttp extra 要与服务端一致，见[上一节](#4--转换参数)）。
 
-勾选「强制走落地」时，`path` 末尾追加 `&global=1`，强制入口不再先尝试直连、一律走 SSTP 节点。
+`GLOBAL` 三态，决定 `path` 末尾要不要追加 `global` 参数：
+
+| 选择 | `path` 末尾 | 效果 |
+|---|---|---|
+| 不追加（默认） | `?ed=2560` | 服务端自行决定是否先直连 |
+| `global=1` | `?ed=2560&global=1` | **强制**走 SSTP 落地，不做直连尝试 |
+| `global=0` | `?ed=2560&global=0` | 明确不强制，行为同「不追加」 |
 
 ---
 
@@ -298,6 +351,43 @@ curl -s https://<你的域名>/api/convert \
 }
 ```
 
+请求体里可以带上**任意转换参数**覆盖默认值（与界面「4 · 转换参数」一一对应）：
+
+| 字段 | 类型 | 默认 | 说明 |
+|---|---|---|---|
+| `uuid` | string | `495c7195-…` | VLESS UUID |
+| `entryHost` | string | `saas.sin.fan` | 入口 host，**域名或 IP 均可** |
+| `entryPort` | number | `443` | 入口端口 |
+| `sni` | string | `snip.edgeoneai.cc.cd` | Host / SNI |
+| `type` | string | `ws` | `ws` / `xhttp` |
+| `global` | string | `''` | `''` = 不追加；`'1'` = `global=1`；`'0'` = `global=0` |
+| `ed` | number | `2560` | Early Data 长度 |
+| `remark` | string | `vpngate.me \| {country} \| {name}` | 备注模板 |
+| `sstpUser` / `sstpPass` | string | `vpn` / `vpn` | SSTP / PPP 认证信息 |
+| `items` 或 `text` | — | — | 二选一：节点数组，或原始文本（自动解析） |
+
+自定义示例（xhttp + IP 入口 + `global=1`）：
+
+```bash
+curl -s https://<你的域名>/api/convert \
+  -H 'content-type: application/json' \
+  -d '{
+        "items": [{"host":"vpn228702251.opengw.net","port":1587,"country":"Australia"}],
+        "uuid": "11111111-2222-3333-4444-555555555555",
+        "entryHost": "1.2.3.4",
+        "entryPort": 8443,
+        "sni": "relay.example.com",
+        "type": "xhttp",
+        "global": "1"
+      }'
+```
+
+```text
+vless://11111111-2222-3333-4444-555555555555@1.2.3.4:8443?encryption=none&security=tls&sni=relay.example.com&fp=chrome&type=xhttp&mode=stream-one&alpn=h2&host=relay.example.com&path=%2Ffdip%3Dsstp%3A%2F%2Fvpn%3Avpn%40vpn228702251.opengw.net%3A1587%3Fed%3D2560%26global%3D1#vpngate.me%20%7C%20Australia%20%7C%20vpn228702251
+```
+
+> 转换结果的 `security` 恒为 `tls`、`encryption` 恒为 `none`，**只有 ws / xhttp 两种传输**，见[上一节的限制说明](#4--转换参数)。
+
 ### 4. 其他
 
 | 接口 | 说明 |
@@ -331,7 +421,7 @@ curl -s https://<你的域名>/api/convert \
 | `CONCURRENCY` | `20` | 并发数（1~60） |
 | `TIMEOUT` | `12` | 单节点超时秒数（3~30） |
 | `MAX_DURATION` | `240` | 整轮检测最大时长秒数（10~600） |
-| `GLOBAL` | `0` | `1` 表示 path 追加 `global=1` |
+| `GLOBAL` | `''`（不追加） | `1` = path 追加 `global=1`；`0` = 追加 `global=0`；留空/填别的 = 不追加 |
 
 ---
 
@@ -354,6 +444,7 @@ curl -s https://<你的域名>/api/convert \
 3. **总时长**：默认 `MAX_DURATION = 240s`，到点会停止剩余节点并发 `warn` 事件。整批没测完就分批测。
 4. **结果不持久化**：本工具无数据库（默认不挂 KV / D1），每次结果只在当次请求里，刷新页面即消失，需要留存请复制或下载。
 5. **只测节点本身**：不验证「入口 + 节点」整条链路，见 [第五节](#五检测原理)。
+6. **转换范围有限**：只生成 `vless` + `ws`/`xhttp` + `tls` 这一种链接，不做 Reality、也不做 trojan / vmess / ss 与 TCP / gRPC / HTTPUpgrade 的转换，见 [第三节 4 · 转换参数](#4--转换参数)。
 
 ---
 
@@ -379,7 +470,21 @@ curl -s https://<你的域名>/api/convert \
 `[vars]` 改动必须重新 `wrangler deploy` 才会生效；在 Dashboard 改变量也需要重新部署一次。
 
 **Q：想换自己的入口（UUID / 域名）？**
-界面「vless 链接参数」里直接改即可，或设置对应的环境变量作为默认值。
+界面「4 · 转换参数」里直接改 UUID、ENTRY_HOST、ENTRY_PORT、Host/SNI 即可，或设置对应的环境变量作为默认值。ENTRY_HOST 填域名或 IP 都行。
+
+**Q：导入生成的链接后连不上？**
+按顺序排查：
+1. **UUID 是否与服务端一致** —— 不一致则鉴权直接失败；
+2. **ENTRY_HOST / ENTRY_PORT 是否真的是服务端接入点** —— 这里填的是 VLESS 服务端地址，不是随便一个域名；
+3. **Host / SNI 是否与服务端匹配** —— SNI 错了 TLS 握手就过不去；
+4. **TLS 是否被中间设备干扰** —— 本工具只生成 `security=tls`，不支持 Reality；
+5. 上面这些都确认无误后，再用客户端看日志定位。
+
+**Q：xhttp 的链接一直超时 / 握手失败？**
+多半是客户端的 xhttp **extra** 与服务端不一致。界面选 `xhttp` 时会自动给出常用 extra，把它照抄到客户端即可；服务端改过配置的话以服务端为准。
+
+**Q：LINK 里出现了 `%26global%3D1`？**
+这是 `&global=1` 编码后嵌在 `path` 参数里的正常结果（解码后就是 `?ed=2560&global=1`），不是转义错误。不需要 global 就把 GLOBAL 选回「不追加」。
 
 ---
 

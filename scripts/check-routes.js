@@ -33,4 +33,35 @@ await call('/api/convert', {
   body: JSON.stringify({ items: [{ host: 'vpn798662158.opengw.net', port: 1893, country: 'Japan' }] }),
 });
 await call('/nope');
-console.log('路由冒烟测试: OK');
+
+/* 转换参数：自定义 UUID / ENTRY_HOST / ENTRY_PORT / SNI / TYPE / GLOBAL 三态 */
+const convert = async body => {
+  const res = await worker.fetch(
+    new Request('https://example.com/api/convert', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify(body),
+    }),
+    {},
+  );
+  return (await res.json()).text;
+};
+
+const node = [{ host: 'vpn228702251.opengw.net', port: 1587, country: 'Australia' }];
+const base = { items: node };
+
+console.log('\n--- 转换参数验证 ---');
+console.log('ws + 默认        :', await convert(base));
+console.log('ws + global=1    :', await convert({ ...base, global: '1' }));
+console.log('ws + global=0    :', await convert({ ...base, global: '0' }));
+console.log('xhttp + 自定义   :', await convert({
+  ...base,
+  uuid: '11111111-2222-3333-4444-555555555555',
+  entryHost: '1.2.3.4',
+  entryPort: 8443,
+  sni: 'relay.example.com',
+  type: 'xhttp',
+  global: '1',
+}));
+
+console.log('\n路由冒烟测试: OK');

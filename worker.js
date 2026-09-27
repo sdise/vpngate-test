@@ -50,6 +50,8 @@ const DEFAULTS = {
   type: 'ws',
   /** Early Data 长度，写进 path 的 ed 参数 */
   ed: 2560,
+  /** global 参数：'' = 不写，'1' = 强制走落地，'0' = 不强制 */
+  global: '',
   /** SSTP / PPP 的 PAP 账号密码（VPNGate 公共节点固定 vpn / vpn） */
   sstpUser: 'vpn',
   sstpPass: 'vpn',
@@ -134,6 +136,12 @@ const clampInt = (value, fallback, range) => {
   const n = parseInt(value, 10);
   if (!Number.isFinite(n)) return fallback;
   return Math.min(Math.max(n, range[0]), range[1]);
+};
+
+/** GLOBAL 三态归一化：'1' / '0' 原样保留，其余一律视为「不写这个参数」 */
+const normalizeGlobal = (value, fallback) => {
+  const text = String(value === undefined || value === null ? fallback : value).trim();
+  return text === '1' || text === '0' ? text : '';
 };
 
 const isPort = value => {
@@ -881,7 +889,8 @@ const buildRemark = (tpl, item) => {
 /** 主机名/IP:端口 → vless:// 链接 */
 function buildVless(item, opt) {
   let path = '/fdip=sstp://' + opt.sstpUser + ':' + opt.sstpPass + '@' + item.host + ':' + item.port + '?ed=' + opt.ed;
-  if (opt.global) path += '&global=1';
+  // global 三态：'1' = 强制走 SSTP 落地；'0' = 不强制（服务端可先直连）；'' / 其他 = 不写这个参数
+  if (opt.global === '1' || opt.global === '0') path += '&global=' + opt.global;
 
   const query = new URLSearchParams();
   query.set('encryption', 'none');
@@ -942,6 +951,10 @@ function readConfig(env, body) {
   const str = (key, envKey, fallback) => String(pick(key, envKey) === undefined ? fallback : pick(key, envKey));
   const int = (key, envKey, fallback, range) => clampInt(pick(key, envKey), fallback, range);
 
+  // global 允许显式传 ''（前端「不追加」），所以绕开 pick 的空值回退逻辑
+  let globalRaw = src.global;
+  if (globalRaw === undefined || globalRaw === null) globalRaw = env ? env.GLOBAL : undefined;
+
   const cfg = {
     uuid: str('uuid', 'UUID', DEFAULTS.uuid),
     entryHost: str('entryHost', 'ENTRY_HOST', DEFAULTS.entryHost),
@@ -959,7 +972,7 @@ function readConfig(env, body) {
     concurrency: int('concurrency', 'CONCURRENCY', DEFAULTS.concurrency, LIMITS.concurrency),
     timeout: int('timeout', 'TIMEOUT', DEFAULTS.timeout, LIMITS.timeout),
     maxDuration: int('maxDuration', 'MAX_DURATION', DEFAULTS.maxDuration, [10, 600]),
-    global: Boolean(src.global) || (env ? String(env.GLOBAL) === '1' : false),
+    global: normalizeGlobal(globalRaw, DEFAULTS.global),
     tcpEnabled: Boolean(src.tcp && src.tcp.enabled),
     tcpHost: '',
     tcpPort: 80,
@@ -1161,6 +1174,13 @@ button:disabled{opacity:.45;cursor:not-allowed}
   background:transparent;color:var(--sub);cursor:pointer}
 .tab.on{background:var(--acc);border-color:var(--acc);color:#fff}
 .tip{color:var(--sub);font-size:12px;margin:8px 0 0}
+.note{margin-top:11px;padding:10px 12px;border-left:3px solid var(--warn);background:#1c1810;
+  border-radius:0 8px 8px 0;font-size:12.5px;color:#ddd6c4;line-height:1.75}
+.note b{color:#f7dfa5}
+code{font-family:ui-monospace,Consolas,monospace;font-size:11.5px;background:var(--card2);
+  border:1px solid var(--line);border-radius:5px;padding:1px 5px;color:var(--txt);word-break:break-all}
+pre.code{background:var(--card2);border:1px solid var(--line);border-radius:8px;padding:10px;
+  overflow:auto;font:11.5px/1.6 ui-monospace,Consolas,monospace;color:var(--sub);margin:8px 0 0}
 .err{color:var(--bad);font-size:12.5px;margin-top:8px;word-break:break-all}
 details{margin-top:10px}
 summary{cursor:pointer;color:var(--sub);font-size:12.5px}
@@ -1200,24 +1220,10 @@ a{color:var(--acc)}
       <label class="chk"><input type="checkbox" id="tcpChk"> 额外验证出网（经隧道做 TCP 三次握手）</label>
       <input type="text" id="tcpTarget" value="1.1.1.1:80" style="width:170px">
     </div>
-    <details>
-      <summary>vless 链接参数（展开可改）</summary>
-      <div class="grid" style="margin-top:10px">
-        <div><label class="f">UUID</label><input type="text" id="uuid"></div>
-        <div><label class="f">入口 host:port</label><input type="text" id="entry"></div>
-        <div><label class="f">SNI / Host</label><input type="text" id="sni"></div>
-        <div><label class="f">传输类型</label><select id="type"><option value="ws">ws</option><option value="xhttp">xhttp</option></select></div>
-        <div><label class="f">ed（Early Data）</label><input type="number" id="ed" min="0" max="65535"></div>
-        <div><label class="f">备注模板</label><input type="text" id="remark"></div>
-      </div>
-      <div class="row" style="margin-top:10px">
-        <label class="chk"><input type="checkbox" id="globalChk"> 强制走落地（path 追加 global=1）</label>
-      </div>
-    </details>
   </div>
 
   <div class="card">
-    <h2>3 · 开始检测</h2>
+    <h2>3 · 检测与转换</h2>
     <div class="row">
       <button class="primary" id="btnTest">开始测试</button>
       <button id="btnStop" disabled>停止</button>
@@ -1237,7 +1243,64 @@ a{color:var(--acc)}
   </div>
 
   <div class="card">
-    <h2>4 · 结果</h2>
+    <h2>4 · 转换参数 <span class="tag">点「转换为 vless 链接」时按这里生成</span></h2>
+    <div class="grid">
+      <div><label class="f">UUID</label><input type="text" id="uuid" spellcheck="false"></div>
+      <div><label class="f">ENTRY_HOST（域名 / IP）</label><input type="text" id="entryHost" spellcheck="false"></div>
+      <div><label class="f">ENTRY_PORT</label><input type="number" id="entryPort" min="1" max="65535"></div>
+      <div><label class="f">Host / SNI</label><input type="text" id="sni" spellcheck="false"></div>
+      <div><label class="f">TYPE（传输类型）</label>
+        <select id="type"><option value="ws">ws</option><option value="xhttp">xhttp</option></select>
+      </div>
+      <div><label class="f">GLOBAL（落地模式）</label>
+        <select id="globalSel">
+          <option value="">不追加（不写 global 参数）</option>
+          <option value="1">global=1（强制走 SSTP 落地）</option>
+          <option value="0">global=0（不强制，先直连）</option>
+        </select>
+      </div>
+    </div>
+    <details>
+      <summary>更多参数（ed / 备注模板 / SSTP 账号）</summary>
+      <div class="grid" style="margin-top:10px">
+        <div><label class="f">ed（Early Data）</label><input type="number" id="ed" min="0" max="65535"></div>
+        <div><label class="f">备注模板</label><input type="text" id="remark" spellcheck="false"></div>
+        <div><label class="f">SSTP 账号</label><input type="text" id="sstpUser" spellcheck="false"></div>
+        <div><label class="f">SSTP 密码</label><input type="text" id="sstpPass" spellcheck="false"></div>
+      </div>
+    </details>
+
+    <div class="note">
+      <b>转换只支持 VLESS over WebSocket / XHTTP + TLS 这一种节点。</b><br>
+      即：<code>vless://{UUID}@{ENTRY_HOST}:{ENTRY_PORT}?security=tls&amp;type=ws|xhttp&amp;host={SNI}&amp;sni={SNI}&amp;path=/fdip=sstp://…</code><br>
+      其他协议（trojan / vmess / ss、TCP / gRPC / HTTPUpgrade 传输、Reality 等）<b>不在本转换范围</b>内，请另找工具。<br>
+      ENTRY_HOST 填域名或 IP 均可；但它必须是运行 cf-vpngate 类<b>服务端</b>的接入点，
+      且服务端的 UUID 要与上面填写的 UUID 一致，否则连得上也过不了鉴权。
+    </div>
+
+    <div id="xhttpTip" class="note" style="display:none">
+      <b>已选择 xhttp：</b>客户端必须把 XHTTP 的 <b>extra</b> 配置设成与<b>服务端（vless 节点服务端）</b>一致，
+      否则握手会失败或直接超时。常用的一组（服务端默认时可直接照抄）：
+      <pre class="code" id="xhttpExtra">{
+  "extra": {
+    "noGRPCHeader": true,
+    "headers": {
+      "Content-Type": "application/octet-stream"
+    },
+    "xPaddingBytes": "100-1000",
+    "xPaddingObfsMode": true,
+    "xPaddingMethod": "tokenish",
+    "xPaddingPlacement": "queryInHeader",
+    "xPaddingHeader": "X-Cache",
+    "xPaddingKey": "_dc"
+  }
+}</pre>
+      <span class="tip" style="margin:0">服务端若改了 xhttp 相关参数，请以服务端实际配置为准。</span>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>5 · 结果</h2>
     <div class="tabs">
       <button class="tab on" data-tab="valid">有效节点</button>
       <button class="tab" data-tab="vless">vless 链接</button>
@@ -1257,30 +1320,39 @@ window.CFG = __CFG_JSON__;
   var S = { items: [], valid: [], failed: [], vless: '', tab: 'valid', ctrl: null, running: false };
 
   function fill(){
+    CFG.entryPort = CFG.entryPort || 443;
     $('uuid').value = CFG.uuid;
-    $('entry').value = CFG.entryHost + ':' + CFG.entryPort;
+    $('entryHost').value = CFG.entryHost;
+    $('entryPort').value = CFG.entryPort;
     $('sni').value = CFG.sni;
     $('type').value = CFG.type;
+    $('globalSel').value = CFG.global || '';
     $('ed').value = CFG.ed;
     $('remark').value = CFG.remark;
+    $('sstpUser').value = CFG.sstpUser;
+    $('sstpPass').value = CFG.sstpPass;
+    syncTypeTip();
   }
 
+  function syncTypeTip(){ $('xhttpTip').style.display = $('type').value === 'xhttp' ? 'block' : 'none'; }
+  $('type').onchange = syncTypeTip;
+
   function opt(){
-    var entry = ($('entry').value || CFG.entryHost + ':' + CFG.entryPort);
-    var at = entry.lastIndexOf(':');
     return {
       defaultPort: parseInt($('dport').value,10) || 443,
       limit: parseInt($('limit').value,10) || 200,
       concurrency: parseInt($('conc').value,10) || 20,
       timeout: parseInt($('timeout').value,10) || 12,
-      uuid: $('uuid').value || CFG.uuid,
-      entryHost: at > 0 ? entry.slice(0,at) : entry,
-      entryPort: at > 0 ? (parseInt(entry.slice(at+1),10) || 443) : 443,
-      sni: $('sni').value || CFG.sni,
-      type: $('type').value,
+      uuid: ($('uuid').value || CFG.uuid).trim(),
+      entryHost: ($('entryHost').value || CFG.entryHost).trim(),
+      entryPort: parseInt($('entryPort').value,10) || CFG.entryPort || 443,
+      sni: ($('sni').value || CFG.sni).trim(),
+      type: $('type').value === 'xhttp' ? 'xhttp' : 'ws',
       ed: parseInt($('ed').value,10) || 0,
       remark: $('remark').value || CFG.remark,
-      global: $('globalChk').checked,
+      sstpUser: ($('sstpUser').value || CFG.sstpUser || 'vpn').trim() || 'vpn',
+      sstpPass: ($('sstpPass').value || CFG.sstpPass || 'vpn').trim() || 'vpn',
+      global: $('globalSel').value || '',
       tcp: { enabled: $('tcpChk').checked, target: $('tcpTarget').value || '1.1.1.1:80' }
     };
   }
@@ -1518,6 +1590,9 @@ export default {
             type: cfg.type,
             ed: cfg.ed,
             remark: cfg.remark,
+            global: cfg.global,
+            sstpUser: cfg.sstpUser,
+            sstpPass: cfg.sstpPass,
           }),
         );
         return new Response(html, { headers: { 'content-type': 'text/html; charset=utf-8', 'cache-control': 'no-store' } });
