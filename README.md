@@ -4,12 +4,30 @@
 
 把节点（`主机名/IP:端口`，或整段 `vpngate.csv` 内容）粘进去 —— 点「开始测试」—— 它会在 Cloudflare 边缘节点上**直接对目标做 SSTP 握手**，把还活着的节点挑出来，再一键转成可以直接导入 v2rayN / Shadowrocket 等客户端的 `vless://` 链接。
 
-> 部署方法见 [DEPLOY.md](DEPLOY.md)，包含 **Dashboard 手动部署** 与 **wrangler CLI 部署** 两种方式。
+## 一键部署到 Cloudflare（推荐）
+
+[![Deploy to Cloudflare](https://deploy.workers.cloudflare.com/button)](https://deploy.workers.cloudflare.com/?url=https://github.com/sdise/vpngate-test)
+
+点上面这个按钮，Cloudflare 会：把本仓库克隆到你自己的 GitHub 账号 → 让你填 Worker 名等基本信息 → 用 **Workers Builds** 自动构建并部署 → 返回一个 `*.workers.dev` 地址。
+
+配置页面里的字段直接按默认值点下一步即可（本项目无需构建步骤，`wrangler.toml` 已就位，默认参数全是可用的）。
+之后**每次 `git push` 到你克隆出来的仓库，Cloudflare 都会自动重新部署**，不需要再点任何按钮。
+
+按钮会自动跳转到 Cloudflare Dashboard 的部署页（等价的直达地址）：
+
+```text
+https://dash.cloudflare.com/?to=/:account/workers-and-pages/create/deploy-to-workers&repository=https://github.com/sdise/vpngate-test
+```
+
+换成你自己的仓库（如 fork 地址）也能用，把 `repository=` 后面的 URL 替换掉即可 —— 仓库需为**公开**。
+
+> 三种部署方式详见 [DEPLOY.md](DEPLOY.md)：**方式〇** 一键按钮 / Workers Builds（推荐，推送后自动部署）· **方式一** Dashboard 手动粘贴 · **方式二** wrangler CLI。
 
 ---
 
 ## 目录
 
+- [一键部署到 Cloudflare（推荐）](#一键部署到-cloudflare推荐)
 - [一、它能做什么](#一它能做什么)
 - [二、和 `scripts/sstp_check.py` 的关系](#二和-scriptssstp_checkpy-的关系)
 - [三、界面怎么用](#三界面怎么用)
@@ -486,6 +504,16 @@ vless://11111111-2222-3333-4444-555555555555@1.2.3.4:8443?encryption=none&securi
 **Q：LINK 里出现了 `%26global%3D1`？**
 这是 `&global=1` 编码后嵌在 `path` 参数里的正常结果（解码后就是 `?ed=2560&global=1`），不是转义错误。不需要 global 就把 GLOBAL 选回「不追加」。
 
+**Q：推送代码后没有自动部署？**
+两种自动部署通道，确认你用的是哪一种：
+1. **Workers Builds（推荐）**：在 Cloudflare Dashboard → 该 Worker → **设置 → 构建（Builds）** 里能看到 Git 仓库信息。若用的是 GitHub 的 **fork / 自己克隆的仓库**，要往**那个仓库**推才会触发，往 `sdise/vpngate-test` 推是不会触发你的部署的。
+2. **GitHub Actions**：需要仓库里配好 `CLOUDFLARE_API_TOKEN`。没配的话工作流会打印 "Skipped" 而不是报错 —— 这是正常的，不是失败。
+
+若想手动补一次部署：Dashboard → 该 Worker → **部署（Deployments）** → 右上角 **Retry build**；或本地 `npm run deploy`。
+
+**Q：会不会重复部署两次？**
+不会。本仓库的 GitHub Actions 在**没有** `CLOUDFLARE_API_TOKEN` 时会直接跳过（只打印提示，不报红）；已经用 Workers Builds 的话就不用再配 Token，二者不必同时启用。
+
 ---
 
 ## 十一、文件结构
@@ -497,14 +525,14 @@ vpngate-test/
 ├── package.json          # dev / deploy / tail / check 脚本
 ├── .gitignore
 ├── README.md             # 本文件：使用文档
-├── DEPLOY.md             # 部署文档（手动部署 + wrangler CLI）
+├── DEPLOY.md             # 部署文档（一键按钮 / Workers Builds / 手动 / wrangler CLI）
 ├── scripts/
 │   ├── check-ui.js       # 本地自检：校验内嵌前端 HTML 的 JS 语法
 │   ├── check-parse.js    # 本地自检：在 Node 里跑解析 / 转换逻辑
 │   └── check-routes.js   # 本地自检：冒烟测试 /、/api/parse、/api/convert、/healthz
 └── .github/
     └── workflows/
-        └── deploy.yml    # 可选：GitHub Actions 自动部署（需配置 API Token）
+        └── deploy.yml    # 可选：GitHub Actions 自动部署（无 Token 时自动跳过，不报错）
 ```
 
 本地自检（只需 Node，不必 `npm install`）：

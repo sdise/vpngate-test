@@ -7,11 +7,42 @@
   "type": "module",
   "scripts": {
     "dev": "wrangler dev",
-    "deploy": "wrangler deploy",
+    "deploy": "npx wrangler deploy",
     "tail": "wrangler tail",
     "check": "node scripts/check-ui.js && node scripts/check-parse.js && node scripts/check-routes.js"
   },
   "devDependencies": {
     "wrangler": "^4.0.0"
+  },
+  "cloudflare": {
+    "bindings": {
+      "UUID": {
+        "description": "VLESS 链接的 UUID，必须与服务端一致（当前默认值已可用）。"
+      },
+      "ENTRY_HOST": {
+        "description": "VLESS 入口地址，域名或 IP 均可，必须是运行 cf-vpngate 类服务端的接入点。"
+      },
+      "ENTRY_PORT": {
+        "description": "VLESS 入口端口，默认 `443`。"
+      },
+      "SNI": {
+        "description": "TLS 的 SNI，同时作为 WebSocket / XHTTP 请求的 `Host`。"
+      },
+      "TYPE": {
+        "description": "传输类型：`ws` 或 `xhttp`。选 `xhttp` 时客户端 extra 需与服务端一致。"
+      },
+      "GLOBAL": {
+        "description": "落地模式：`1` = 强制走 SSTP 落地，`0` = 不强制，留空 = 不写该参数。"
+      },
+      "MAX_NODES": {
+        "description": "单次最多检测多少个节点（1~500，默认 `200`）。"
+      },
+      "CONCURRENCY": {
+        "description": "并发数（1~60，默认 `20`）。免费计划建议 ≤10。"
+      },
+      "TIMEOUT": {
+        "description": "单节点超时秒数（3~30，默认 `12`）。"
+      }
+    }
   }
 }

@@ -1,9 +1,15 @@
-name: Deploy
+name: Deploy to Cloudflare Workers
 
 # 推送到 main 分支自动部署到 Cloudflare Workers。
-# 前置条件：在仓库 Settings → Secrets and variables → Actions 里添加
-#   CLOUDFLARE_API_TOKEN —— Cloudflare「编辑 Cloudflare Workers」模板的 API Token。
-# 也可以不配：在 Actions 页面手动 Run workflow（同样需要该 Secret）。
+#
+# ⚠️ 这是【可选】的第二条自动部署通道。
+#    如果已经在 Cloudflare 里用「Workers Builds」把这个仓库接上了 Git 集成
+#    （见 DEPLOY.md 方式三），就不需要配任何 Secret —— 本工作流会自动跳过，不会重复部署。
+#
+# 想用本工作流（GitHub Actions 部署）时再配 Secret：
+#   Settings → Secrets and variables → Actions → New repository secret
+#   CLOUDFLARE_API_TOKEN   Cloudflare「编辑 Cloudflare Workers」模板的 API Token（必填）
+#   CLOUDFLARE_ACCOUNT_ID  账户 ID（可选，多账户时才需要）
 
 on:
   push:
@@ -24,14 +30,25 @@ jobs:
         with:
           node-version: "20"
 
-      - name: Install dependencies
-        run: npm install
-
       - name: Self check
-        run: npm run check
+        run: node scripts/check-ui.js && node scripts/check-parse.js && node scripts/check-routes.js
+
+      # 没配 Token 就整个跳过，避免每次推送都报红
+      - name: Check Cloudflare credentials
+        id: creds
+        run: echo "has_token=${{ secrets.CLOUDFLARE_API_TOKEN != '' }}" >> "$GITHUB_OUTPUT"
 
       - name: Deploy to Cloudflare Workers
+        if: steps.creds.outputs.has_token == 'true'
         uses: cloudflare/wrangler-action@v3
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           command: deploy
+
+      - name: Skipped
+        if: steps.creds.outputs.has_token != 'true'
+        run: |
+          echo "未配置 CLOUDFLARE_API_TOKEN，跳过 GitHub Actions 部署。"
+          echo "若已使用 Cloudflare Workers Builds 的 Git 集成，推送会自动部署，无需这里处理。"
+          echo "否则请到 Settings → Secrets and variables → Actions 添加 CLOUDFLARE_API_TOKEN。"
