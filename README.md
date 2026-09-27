@@ -21,7 +21,7 @@ https://dash.cloudflare.com/?to=/:account/workers-and-pages/create/deploy-to-wor
 
 换成你自己的仓库（如 fork 地址）也能用，把 `repository=` 后面的 URL 替换掉即可 —— 仓库需为**公开**。
 
-> 三种部署方式详见 [DEPLOY.md](DEPLOY.md)：**方式〇** 一键按钮 / Workers Builds（推荐，推送后自动部署）· **方式一** Dashboard 手动粘贴 · **方式二** wrangler CLI。
+> 四种部署方式详见 [DEPLOY.md](DEPLOY.md)：**方式〇 A** 一键按钮 · **方式〇 B** Workers Builds 手动连接（两者都是推送后自动部署）· **方式一** Dashboard 手动粘贴 · **方式二** wrangler CLI / GitHub Actions。
 
 ---
 
